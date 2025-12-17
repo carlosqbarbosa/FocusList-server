@@ -1,47 +1,106 @@
-const db = require('../database');
-const { hash, compare } = require('../utils/hash');
+const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-require('dotenv').config();
+const pool = require('../config/database');
+const { sendSuccess, sendError } = require('../utils/response');
 
-exports.register = async (req, res) => {
-  const { name, email, password } = req.body;
-  if (!name || !email || !password) return res.status(400).json({ error: 'Dados incompletos' });
+class AuthController {
+  async register(req, res) {
+    const { nome, sobrenome, email, senha } = req.body;
 
-  try {
-    // checar se email existe
-    const [rows] = await db.query('SELECT id FROM users WHERE email = ?', [email]);
-    if (rows.length) return res.status(400).json({ error: 'Email já cadastrado' });
+    try {
+      // Verificar se email já existe
+      const userExists = await pool.query(
+        'SELECT id FROM usuarios WHERE email = $1 AND deletado_em IS NULL',
+        [email]
+      );
 
-    const hashed = await hash(password);
-    const [result] = await db.query('INSERT INTO users (name, email, password) VALUES (?, ?, ?)', [name, email, hashed]);
+      if (userExists.rows.length > 0) {
+        return sendError(res, 'Email já cadastrado', 400);
+      }
 
-    const userId = result.insertId;
-    const token = jwt.sign({ id: userId }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN });
+      // Hash da senha
+      const senhaHash = await bcrypt.hash(senha, 10);
 
-    res.status(201).json({ message: 'Usuário criado', token, user: { id: userId, name, email } });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Erro ao registrar' });
+      // Criar usuário
+      const result = await pool.query(
+        `INSERT INTO usuarios (nome, sobrenome, email, senha_hash) 
+         VALUES ($1, $2, $3, $4) 
+         RETURNING id, nome, sobrenome, email, criado_em`,
+        [nome, sobrenome, email, senhaHash]
+      );
+
+      const usuario = result.rows[0];
+
+      // Criar configurações padrão
+      await pool.query(
+        'INSERT INTO usuarios_configuracoes (usuario_id) VALUES ($1)',
+        [usuario.id]
+      );
+
+      // Gerar token
+      const token = jwt.sign(
+        { id: usuario.id, email: usuario.email },
+        process.env.JWT_SECRET,
+        { expiresIn: process.env.JWT_EXPIRATION || '7d' }
+      );
+
+      return sendSuccess(res, { usuario, token }, 'Cadastro realizado com sucesso', 201);
+    } catch (error) {
+      console.error('Erro no registro:', error);
+      return sendError(res, 'Erro ao realizar cadastro');
+    }
   }
-};
 
-exports.login = async (req, res) => {
-  const { email, password } = req.body;
-  if (!email || !password) return res.status(400).json({ error: 'Dados incompletos' });
+  async login(req, res) {
+    const { email, senha } = req.body;
 
-  try {
-    const [rows] = await db.query('SELECT * FROM users WHERE email = ?', [email]);
-    if (!rows.length) return res.status(400).json({ error: 'Usuário não encontrado' });
+    try {
+      // Buscar usuário
+      const result = await pool.query(
+        `SELECT id, nome, sobrenome, email, senha_hash, url_foto_perfil, plano, status 
+         FROM usuarios 
+         WHERE email = $1 AND deletado_em IS NULL`,
+        [email]
+      );
 
-    const user = rows[0];
-    const ok = await compare(password, user.password);
-    if (!ok) return res.status(401).json({ error: 'Senha incorreta' });
+      if (result.rows.length === 0) {
+        return sendError(res, 'Email ou senha incorretos', 401);
+      }
 
-    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN });
+      const usuario = result.rows[0];
 
-    res.json({ token, user: { id: user.id, name: user.name, email: user.email } });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Erro no login' });
+      // Verificar conta ativa
+      if (usuario.status !== 'ativo') {
+        return sendError(res, 'Conta inativa ou suspensa', 403);
+      }
+
+      // Verificar senha
+      const senhaValida = await bcrypt.compare(senha, usuario.senha_hash);
+      if (!senhaValida) {
+        return sendError(res, 'Email ou senha incorretos', 401);
+      }
+
+      // Remover senha do objeto
+      delete usuario.senha_hash;
+
+      // Gerar token
+      const token = jwt.sign( // Token = identidade do usuário nas próximas requisições
+        { id: usuario.id, email: usuario.email },
+        process.env.JWT_SECRET,
+        { expiresIn: process.env.JWT_EXPIRATION || '7d' }
+      );
+
+      return sendSuccess(res, { usuario, token }, 'Login realizado com sucesso'); // Controller entrega a resposta
+    } catch (error) {
+      console.error('Erro no login:', error);
+      return sendError(res, 'Erro ao realizar login');
+    }
   }
-};
+
+  async logout(req, res) {
+    // Em uma implementação com Redis, aqui você invalidaria o token
+    return sendSuccess(res, null, 'Logout realizado com sucesso');
+  }
+}
+
+module.exports = new AuthController();

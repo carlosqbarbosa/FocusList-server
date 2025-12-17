@@ -1,62 +1,63 @@
-const db = require('../database');
+const pool = require('../config/database');
+const { sendSuccess, sendError } = require('../utils/response');
 
-exports.getTasks = async (req, res) => {
-  const userId = req.userId || req.params.userId;
-  if (!userId) return res.status(400).json({ error: 'userId necessário' });
+class TasksController {
+  async listar(req, res) {
+    const userId = req.userId;
+    const { 
+      status, 
+      prioridade, 
+      categoria,
+      busca,
+      limite = 20, 
+      pagina = 1,
+      ordenar = 'criado_em',
+      ordem = 'DESC'
+    } = req.query;
 
-  try {
-    const [tasks] = await db.query('SELECT * FROM tasks WHERE user_id = ? ORDER BY created_at DESC', [userId]);
-    res.json(tasks);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Erro ao buscar tasks' });
+    try {
+      let query = `
+        SELECT t.*, 
+               COALESCE(array_agg(tag.nome) FILTER (WHERE tag.nome IS NOT NULL), '{}') as tags
+        FROM tarefas t
+        LEFT JOIN tarefas_tags tt ON t.id = tt.tarefa_id
+        LEFT JOIN tags tag ON tt.tag_id = tag.id
+        WHERE t.usuario_id = $1 AND t.deletado_em IS NULL
+      `;
+      const params = [userId];
+      let paramIndex = 2;
+      if (status) {
+        query += ` AND t.status = $${paramIndex}`;
+        params.push(status);
+        paramIndex++;
+      }
+      if (prioridade) {
+        query += ` AND t.prioridade = $${paramIndex}`;
+        params.push(prioridade);
+        paramIndex++;
+      }
+      if (categoria) {
+        query += ` AND t.categoria = $${paramIndex}`;
+        params.push(categoria);
+        paramIndex++;
+      }
+      if (busca) {
+        query += ` AND (t.titulo ILIKE $${paramIndex} OR t.descricao ILIKE $${paramIndex})`;
+        params.push(`%${busca}%`);
+        paramIndex++;
+      }
+      query += ` GROUP BY t.id ORDER BY t.${ordenar} ${ordem}`;
+      query += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+      params.push(limite, (pagina - 1) * limite);
+      const result = await pool.query
+        (query, params);
+
+      return sendSuccess(res, result.rows, 'Tarefas listadas com sucesso');
+    } catch (error) {
+      console.error('Erro ao listar tarefas:', error);
+      return sendError(res, 'Erro ao listar tarefas');
+    }
   }
-};
 
-exports.createTask = async (req, res) => {
-  const userId = req.userId;
-  const { title, description, priority } = req.body;
-  if (!title) return res.status(400).json({ error: 'title é obrigatório' });
-
-  try {
-    const [result] = await db.query(
-      'INSERT INTO tasks (user_id, title, description, priority) VALUES (?, ?, ?, ?)',
-      [userId, title, description || null, priority || 'media']
-    );
-    res.status(201).json({ message: 'Task criada', id: result.insertId });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Erro ao criar task' });
-  }
-};
-
-exports.updateTask = async (req, res) => {
-  const userId = req.userId;
-  const { id } = req.params;
-  const { title, description, priority, status } = req.body;
-
-  try {
-    // opcional: checar se task pertence ao usuário
-    await db.query(
-      'UPDATE tasks SET title = ?, description = ?, priority = ?, status = ?, updated_at = NOW() WHERE id = ? AND user_id = ?',
-      [title, description, priority, status, id, userId]
-    );
-    res.json({ message: 'Task atualizada' });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Erro ao atualizar task' });
-  }
-};
-
-exports.deleteTask = async (req, res) => {
-  const userId = req.userId;
-  const { id } = req.params;
-
-  try {
-    await db.query('DELETE FROM tasks WHERE id = ? AND user_id = ?', [id, userId]);
-    res.json({ message: 'Task deletada' });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Erro ao deletar task' });
-  }
-};
+  // Outros métodos do TasksController (criar, atualizar, deletar, etc.) podem ser adicionados aqui
+}
