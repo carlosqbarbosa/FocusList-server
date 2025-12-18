@@ -83,14 +83,14 @@ class AuthController {
       // Remover senha do objeto
       delete usuario.senha_hash;
 
-      // Gerar token
-      const token = jwt.sign( // Token = identidade do usuário nas próximas requisições
+    
+      const token = jwt.sign(
         { id: usuario.id, email: usuario.email },
         process.env.JWT_SECRET,
         { expiresIn: process.env.JWT_EXPIRATION || '7d' }
       );
 
-      return sendSuccess(res, { usuario, token }, 'Login realizado com sucesso'); // Controller entrega a resposta
+      return sendSuccess(res, { usuario, token }, 'Login realizado com sucesso'); 
     } catch (error) {
       console.error('Erro no login:', error);
       return sendError(res, 'Erro ao realizar login');
@@ -98,7 +98,6 @@ class AuthController {
   }
 
   async logout(req, res) {
-    // Em uma implementação com Redis, aqui você invalidaria o token
     return sendSuccess(res, null, 'Logout realizado com sucesso');
   }
 }
