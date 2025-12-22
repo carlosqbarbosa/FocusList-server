@@ -1,1 +1,0 @@
-// Limitação de requisições

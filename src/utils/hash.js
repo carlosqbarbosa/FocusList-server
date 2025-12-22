@@ -1,5 +1,3 @@
-// Funções de hash e comparação usando bcrypt
-
 const bcrypt = require('bcrypt');
 
 const hash = async (plain) => {

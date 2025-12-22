@@ -1,4 +1,4 @@
-const db = require('../database');
+const pool = require('../config/database');
 
 exports.startSession = async (req, res) => {
   const userId = req.userId;

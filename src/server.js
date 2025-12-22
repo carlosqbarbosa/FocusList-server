@@ -18,4 +18,11 @@ app.use('/pomodoro', pomodoroRoutes);
 app.use('/dashboard', dashboardRoutes);
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server rodando em http://localhost:${PORT}`));
+
+app.listen(PORT, () => {
+    console.log('\n' + '='.repeat(40));
+    console.log(`FOCUS LIST SERVER ONLINE`);
+    console.log(`URL: http://localhost:${PORT}`);
+    console.log(`Data: ${new Date().toLocaleString()}`);
+    console.log('='.repeat(40) + '\n');
+});
