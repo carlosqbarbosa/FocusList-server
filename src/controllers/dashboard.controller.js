@@ -3,17 +3,14 @@ const db = require('../config/database');
 exports.summary = async (req, res) => {
   const userId = req.userId;
   try {
-    // total concluídas
     const [[{ concluidas = 0 }]] = await db.query('SELECT COUNT(*) AS concluidas FROM tasks WHERE user_id = ? AND status = "concluida"', [userId]);
 
-    // minutos focados hoje
     const [[{ minutos_hj = 0 }]] = await db.query(
       `SELECT COALESCE(SUM(duration_minutes),0) AS minutos_hj FROM pomodoro_sessions 
        WHERE user_id = ? AND DATE(start_time) = CURDATE()`,
       [userId]
     );
 
-    // tasks em progresso
     const [[{ em_progresso = 0 }]] = await db.query(
       'SELECT COUNT(*) AS em_progresso FROM tasks WHERE user_id = ? AND status = "progresso"',
       [userId]

@@ -1,105 +1,73 @@
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const pool = require('../config/database');
-const { sendSuccess, sendError } = require('../utils/response');
+const authService = require('../services/auth.service')
 
 class AuthController {
-  async register(req, res) {
-    const { nome, sobrenome, email, senha } = req.body;
 
+   async login(req, res) {
     try {
-      // Verificar se email já existe
-      const userExists = await pool.query(
-        'SELECT id FROM usuarios WHERE email = $1 AND deletado_em IS NULL',
-        [email]
-      );
+      const { email, senha } = req.body
 
-      if (userExists.rows.length > 0) {
-        return sendError(res, 'Email já cadastrado', 400);
+      if (!email || !senha) {
+        return res.status(400).json({
+          message: 'Email e senha são obrigatórios'
+        })
       }
 
-      // Hash da senha
-      const senhaHash = await bcrypt.hash(senha, 10);
+      const response = await authService.login(email, senha)
 
-      // Criar usuário
-      const result = await pool.query(
-        `INSERT INTO usuarios (nome, sobrenome, email, senha_hash) 
-         VALUES ($1, $2, $3, $4) 
-         RETURNING id, nome, sobrenome, email, criado_em`,
-        [nome, sobrenome, email, senhaHash]
-      );
+      return res.status(200).json(response)
 
-      const usuario = result.rows[0];
-
-      // Criar configurações padrão
-      await pool.query(
-        'INSERT INTO usuarios_configuracoes (usuario_id) VALUES ($1)',
-        [usuario.id]
-      );
-
-      // Gerar token
-      const token = jwt.sign(
-        { id: usuario.id, email: usuario.email },
-        process.env.JWT_SECRET,
-        { expiresIn: process.env.JWT_EXPIRATION || '7d' }
-      );
-
-      return sendSuccess(res, { usuario, token }, 'Cadastro realizado com sucesso', 201);
     } catch (error) {
-      console.error('Erro no registro:', error);
-      return sendError(res, 'Erro ao realizar cadastro');
+      console.error('Erro no login:', error.message)
+
+      if (error.message === 'USER_NOT_FOUND') {
+        return res.status(404).json({ message: 'Usuário não encontrado' })
+      }
+
+      if (error.message === 'INVALID_PASSWORD') {
+        return res.status(401).json({ message: 'Senha inválida' })
+      }
+
+      return res.status(500).json({
+        message: 'Erro interno no servidor'
+      })
+    }
+  
+  }
+
+  
+  async register(req, res) {
+    try {
+      const response = await authService.register(req.body)
+      return res.status(201).json(response)
+    } catch (error) {
+      console.error('Erro no register:', error.message)
+
+      if (error.message === 'EMAIL_ALREADY_EXISTS') {
+        return res.status(409).json({ message: 'Email já cadastrado' })
+      }
+
+      return res.status(500).json({
+        message: 'Erro interno no servidor'
+      })
     }
   }
 
-  async login(req, res) {
-    const { email, senha } = req.body;
-
+  async refreshToken(req, res) {
     try {
-      // Buscar usuário
-      const result = await pool.query(
-        `SELECT id, nome, sobrenome, email, senha_hash, url_foto_perfil, plano, status 
-         FROM usuarios 
-         WHERE email = $1 AND deletado_em IS NULL`,
-        [email]
-      );
-
-      if (result.rows.length === 0) {
-        return sendError(res, 'Email ou senha incorretos', 401);
-      }
-
-      const usuario = result.rows[0];
-
-      // Verificar conta ativa
-      if (usuario.status !== 'ativo') {
-        return sendError(res, 'Conta inativa ou suspensa', 403);
-      }
-
-      // Verificar senha
-      const senhaValida = await bcrypt.compare(senha, usuario.senha_hash);
-      if (!senhaValida) {
-        return sendError(res, 'Email ou senha incorretos', 401);
-      }
-
-      // Remover senha do objeto
-      delete usuario.senha_hash;
-
-    
-      const token = jwt.sign(
-        { id: usuario.id, email: usuario.email },
-        process.env.JWT_SECRET,
-        { expiresIn: process.env.JWT_EXPIRATION || '7d' }
-      );
-
-      return sendSuccess(res, { usuario, token }, 'Login realizado com sucesso'); 
+      const response = await authService.refreshToken(req.body)
+      return res.status(200).json(response)
     } catch (error) {
-      console.error('Erro no login:', error);
-      return sendError(res, 'Erro ao realizar login');
+      return res.status(401).json({ message: 'Refresh token inválido' })
     }
   }
 
   async logout(req, res) {
-    return sendSuccess(res, null, 'Logout realizado com sucesso');
+    return res.status(200).json({ message: 'Logout realizado com sucesso' })
+  }
+
+  async verificarToken(req, res) {
+    return res.status(200).json({ valid: true })
   }
 }
 
-module.exports = new AuthController();
+module.exports = new AuthController()

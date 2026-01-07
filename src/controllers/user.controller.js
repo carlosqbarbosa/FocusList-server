@@ -4,7 +4,6 @@ const { sendSuccess, sendError } = require('../utils/response');
 
 class UserController {
 
-  // Perfil do usuário
   async perfil(req, res) {
     const userId = req.userId;
 
@@ -23,7 +22,6 @@ class UserController {
     }
   }
 
-  // Atualizar dados básicos
   async atualizar(req, res) {
     const userId = req.userId;
     const { nome, sobrenome } = req.body;
@@ -43,39 +41,41 @@ class UserController {
     }
   }
 
-  // Alterar senha
-  async alterarSenha(req, res) {
-    const userId = req.userId;
-    const { senhaAtual, novaSenha } = req.body;
-
+  async deletar(req, res) {
     try {
-      const result = await pool.query(
-        `SELECT senha_hash FROM usuarios WHERE id = $1`,
+      const userId = req.userId;
+
+      await pool.query(
+        `UPDATE usuarios
+         SET deletado_em = NOW()
+         WHERE id = $1`,
         [userId]
       );
 
-      const senhaValida = await bcrypt.compare(
-        senhaAtual,
-        result.rows[0].senha_hash
-      );
-
-      if (!senhaValida) {
-        return sendError(res, 'Senha atual incorreta', 401);
-      }
-
-      const novaSenhaHash = await bcrypt.hash(novaSenha, 10);
-
-      await pool.query(
-        `UPDATE usuarios SET senha_hash = $1 WHERE id = $2`,
-        [novaSenhaHash, userId]
-      );
-
-      return sendSuccess(res, null, 'Senha alterada com sucesso');
+      return sendSuccess(res, null, 'Usuário deletado com sucesso');
     } catch (error) {
-      console.error('Erro ao alterar senha:', error);
-      return sendError(res, 'Erro ao alterar senha');
+      console.error('Erro ao deletar usuário:', error);
+      return sendError(res, 'Erro ao deletar usuário');
     }
   }
+
+  async alterarSenha(req, res) {
+  const userId = req.userId;
+  const { senhaAtual, novaSenha } = req.body;
+
+  try {
+    await authService.alterarSenha(userId, senhaAtual, novaSenha);
+    return sendSuccess(res, null, 'Senha alterada com sucesso');
+  } catch (error) {
+    console.error('Erro ao alterar senha:', error);
+    
+    if (error.message === 'INVALID_CURRENT_PASSWORD') {
+      return sendError(res, 'Senha atual incorreta', 401);
+    }
+    
+    return sendError(res, 'Erro ao alterar senha');
+  }
+}
 }
 
 module.exports = new UserController();

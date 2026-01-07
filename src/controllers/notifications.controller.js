@@ -3,7 +3,6 @@ const { sendSuccess, sendError } = require('../utils/response');
 
 class NotificationsController {
 
-  // Listar notificações
   async listar(req, res) {
     const userId = req.userId;
 
@@ -23,7 +22,6 @@ class NotificationsController {
     }
   }
 
-  // Marcar como lida
   async marcarComoLida(req, res) {
     const userId = req.userId;
     const { id } = req.params;
@@ -43,7 +41,6 @@ class NotificationsController {
     }
   }
 
-  // Contar notificações não lidas
   async contador(req, res) {
     const userId = req.userId;
 

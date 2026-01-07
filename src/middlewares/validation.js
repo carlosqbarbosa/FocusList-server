@@ -1,5 +1,3 @@
-// Validação de dados
-
 const Joi = require('joi');
 const { sendError } = require('../utils/response');
 

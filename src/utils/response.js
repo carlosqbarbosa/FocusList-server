@@ -1,5 +1,3 @@
-// Padronização de respostas
-
 const sendSuccess = (res, data, message = 'Sucesso', statusCode = 200) => {
   return res.status(statusCode).json({
     success: true,

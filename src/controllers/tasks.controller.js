@@ -2,7 +2,6 @@ const pool = require('../config/database');
 const { sendSuccess, sendError } = require('../utils/response');
 
 class TasksController {
-  // 1. LISTAR TAREFAS (Com filtros e busca)
   async listar(req, res) {
     const userId = req.userId;
     const { 
@@ -49,7 +48,6 @@ class TasksController {
     }
   }
 
-  // 2. CRIAR TAREFA
   async createTask(req, res) {
     const userId = req.userId;
     const { titulo, descricao, prioridade, categoria, data_vencimento } = req.body;
@@ -68,14 +66,13 @@ class TasksController {
     }
   }
 
-  // 3. ATUALIZAR TAREFA
   async updateTask(req, res) {
     const { id } = req.params;
     const userId = req.userId;
-    const updates = req.body; // Ex: { titulo: 'Novo', status: 'concluida' }
+    const updates = req.body; 
 
     try {
-      // Cria a query dinamicamente baseada no que foi enviado no body
+
       const fields = Object.keys(updates);
       const values = Object.values(updates);
       
@@ -95,13 +92,11 @@ class TasksController {
     }
   }
 
-  // 4. DELETAR TAREFA (Soft Delete)
   async deleteTask(req, res) {
     const { id } = req.params;
     const userId = req.userId;
 
     try {
-      // Usando Soft Delete (marcando a data de exclusão em vez de apagar a linha)
       const query = `UPDATE tarefas SET deletado_em = NOW() WHERE id = ? AND usuario_id = ?`;
       const [result] = await pool.execute(query, [id, userId]);
 

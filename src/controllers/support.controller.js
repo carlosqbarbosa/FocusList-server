@@ -3,7 +3,6 @@ const { sendSuccess, sendError } = require('../utils/response');
 
 class SupportController {
 
-  // Criar ticket
   async criar(req, res) {
     const userId = req.userId;
     const { assunto, mensagem } = req.body;
@@ -35,7 +34,6 @@ class SupportController {
     }
   }
 
-  // Listar tickets do usuário
   async listar(req, res) {
     const userId = req.userId;
 
@@ -55,7 +53,6 @@ class SupportController {
     }
   }
 
-  // Detalhar ticket + mensagens
   async detalhar(req, res) {
     const userId = req.userId;
     const { id } = req.params;

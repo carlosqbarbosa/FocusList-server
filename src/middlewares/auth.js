@@ -1,5 +1,3 @@
-// Verificação de autenticação
-
 const jwt = require('jsonwebtoken');
 const { sendError } = require('../utils/response');
 

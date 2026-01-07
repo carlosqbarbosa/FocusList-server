@@ -59,8 +59,6 @@ class UserListDTO {
     this.sobrenome = user.sobrenome;
     this.email = user.email;
     this.urlFotoPerfil = user.url_foto_perfil;
-    this.plano = user.plano;
-    this.status = user.status;
   }
 }
 
