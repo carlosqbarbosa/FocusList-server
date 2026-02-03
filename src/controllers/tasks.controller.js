@@ -57,37 +57,36 @@ class TasksController {
 }
 
   async createTask(req, res) {
-    const userId = req.userId;
+  const userId = req.userId;
 
-    let { titulo, descricao, prioridade, categoria, data_vencimento } = req.body;
+  let { titulo, descricao, prioridade, categoria, data_vencimento } = req.body;
 
-    categoria = categoria || null;
-    data_vencimento = data_vencimento || null;
-    descricao = descricao || null;
+  categoria = categoria || null;
+  data_vencimento = data_vencimento || null; 
+  descricao = descricao || null;
 
-    try {
-      const query = `
-        INSERT INTO tarefas 
-        (titulo, descricao, prioridade, data_vencimento, usuario_id)
-        VALUES (?, ?, ?, ?, ?)
-      `;
+  try {
+    const query = `
+      INSERT INTO tarefas 
+      (titulo, descricao, prioridade, data_vencimento, usuario_id)
+      VALUES (?, ?, ?, ?, ?)
+    `;
 
-      const [result] = await pool.execute(query, [
-        titulo,
-        descricao,
-        prioridade,
-        data_vencimento,
-        userId
-      ]);
+    const [result] = await pool.execute(query, [
+      titulo,
+      descricao,
+      prioridade,
+      data_vencimento, 
+      userId
+    ]);
 
-      return sendSuccess(res, { id: result.insertId }, 'Tarefa criada com sucesso', 201);
+    return sendSuccess(res, { id: result.insertId }, 'Tarefa criada com sucesso', 201);
 
-    } catch (error) {
-      console.error('Erro ao criar:', error);
-      return sendError(res, 'Erro ao criar tarefa');
-    }
+  } catch (error) {
+    console.error('Erro ao criar:', error);
+    return sendError(res, 'Erro ao criar tarefa');
   }
-
+}
   async updateTask(req, res) {
     const { id } = req.params;
     const userId = req.userId;
