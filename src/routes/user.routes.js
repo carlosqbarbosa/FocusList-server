@@ -9,6 +9,10 @@ router.get('/perfil', userCtrl.perfil);
 
 router.put('/atualizar', userCtrl.atualizar);
 
+router.put('/email', userCtrl.atualizarEmail);
+
+router.put('/preferencias', userCtrl.atualizarPreferencias);
+
 router.put('/alterar-senha', userCtrl.alterarSenha);
 
 router.delete('/deletar', userCtrl.deletar);
