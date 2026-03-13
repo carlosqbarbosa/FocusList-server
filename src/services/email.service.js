@@ -20,10 +20,10 @@ async function sendEmail({ to, subject, text, html }) {
       html,
     });
 
-    console.log("📧 Email enviado:", info.messageId);
+    console.log(" Email enviado:", info.messageId);
     return info;
   } catch (error) {
-    console.error("❌ Erro ao enviar email:", error);
+    console.error(" Erro ao enviar email:", error);
     throw new Error("Erro ao enviar email");
   }
 }
